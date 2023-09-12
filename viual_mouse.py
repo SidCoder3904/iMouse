@@ -7,11 +7,10 @@ mesh = mp.solutions.face_mesh
 W, H = pg.size()
 live = cv.VideoCapture(0)
 scaleX = 5
-scaleY = 8
-adjustX = 1/scaleX #or 1/scale?
-adjustY = 2/scaleY #or 1/scale?
-prevNoseX = None
-prevNoseY = None
+scaleY = 10
+adjustX = 1/scaleX
+adjustY = 2/scaleY
+isFirst = True
 with mesh.FaceMesh(refine_landmarks=True) as face_mesh :
   while live.isOpened():
     success, frame = live.read()
@@ -24,18 +23,17 @@ with mesh.FaceMesh(refine_landmarks=True) as face_mesh :
         frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
         if points :
             marks = points[0].landmark
-            if prevNoseX==None or abs(prevNoseX-marks[1].x)>adjustX or abs(prevNoseY-marks[1].y)>adjustY :
-                noseX = marks[1].x
-                noseY = marks[1].y
-            # print(noseX, noseY)
-            cv.rectangle(frame, (int((noseX-adjustX)*fW), int((noseY-adjustY)*fW)), (int((noseX+adjustX)*fH), int((noseY+adjustY)*fH)), (0, 255, 0), 1)
+            if isFirst :
+                centerY = marks[6].y
+                centerX = marks[6].x
+                isFirst = False
+            cv.rectangle(frame, (int((centerX-adjustX)*fW), int((centerY-adjustY)*fW)), (int((centerX+adjustX)*fH), int((centerY+adjustY)*fH)), (0, 255, 0), 1)
             for i, landmark in enumerate(marks[474:478]) :
                 x = int(landmark.x * fW)
                 y = int(landmark.y * fH)
-                # cv.circle(frame, (x, y), 3, (0, 255, 0), 1)
                 if i==1 :
-                    mouseX = scaleX * W * (landmark.x - (scaleX-1)/(2*scaleX) - noseX + 0.5) # see for face centering
-                    mouseY = scaleY * H * (landmark.y - (scaleY-1)/(2*scaleY) - noseY + 0.5)
+                    mouseX = scaleX * W * (landmark.x - (scaleX-1)/(2*scaleX) - centerX + 0.5) # see for face centering
+                    mouseY = scaleY * H * (landmark.y - (scaleY-1)/(2*scaleY) - centerY + 0.5)
                     if mouseX > W - 5 :
                         mouseX = W - 5
                     if mouseX < 5 :
@@ -50,12 +48,12 @@ with mesh.FaceMesh(refine_landmarks=True) as face_mesh :
                 for landmark in lefteye :
                     x = int(landmark.x * fW)
                     y = int(landmark.y * fH)
-                    cv.circle(frame, (x, y), 3, (0, 255, 0), -1)
+                    cv.circle(frame, (x, y), 1, (0, 255, 0), -1)
                 righteye = [marks[374], marks[386]]
                 for landmark in righteye :
                     x = int(landmark.x * fW)
                     y = int(landmark.y * fH)
-                    cv.circle(frame, (x, y), 3, (0, 255, 0), -1)
+                    cv.circle(frame, (x, y), 1, (0, 255, 0), -1)
                 if (righteye[0].y - righteye[1].y) <0.004 and (lefteye[0].y - lefteye[1].y) <0.004 :
                     print("both eyes blinked")
                     pg.click()
@@ -69,8 +67,6 @@ with mesh.FaceMesh(refine_landmarks=True) as face_mesh :
                     pg.rightClick()
                     time.sleep(0.5)
             cv.imshow('Camera', frame)
-            prevNoseX = noseX
-            prevNoseY = noseY
         if cv.waitKey(20) & 0xFF == ord('d'):
             break
     else :
